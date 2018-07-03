@@ -114,6 +114,20 @@ class ParticleFilter {
    * initialized Returns whether particle filter is initialized yet or not.
    */
   const bool initialized() const { return is_initialized_; }
+
+ private:
+  // transformation from local to global coordinate system
+  std::vector<LandmarkObs> local2global(
+      const Particle& p, const std::vector<LandmarkObs>& local_pos);
+
+  // filters for landmarks which are in range of the sensor
+  std::vector<LandmarkObs> inRange(const Particle& p, const Map& map_landmarks,
+                                   double sensor_range);
+
+  // calculates new weights
+  void calcNewWeights(Particle* p, double std_landmark[],
+                      const std::vector<LandmarkObs>& landmarks1,
+                      const std::vector<LandmarkObs>& landmarks2);
 };
 
 #endif /* PARTICLE_FILTER_H_ */
