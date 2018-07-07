@@ -22,11 +22,11 @@
 
 using namespace std;
 
-constexpr bool PREDICTION_UNCERTAINTY_FROM_OUTSIDE = true;
+constexpr bool PREDICTION_ERROR_GAUSSIAN = true;
 constexpr bool ASSOCIATE_OBSERVATIONS_TO_MAPPREDICTION = false;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-  num_particles_ = 100;
+  num_particles_ = 20;
 
   default_random_engine gen;
 
@@ -54,8 +54,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
   constexpr double MIN_YAWRATE = 0.0001;
   default_random_engine gen;
 
-  if (PREDICTION_UNCERTAINTY_FROM_OUTSIDE) {  // use std_pos after system
-                                              // equations
+  if (PREDICTION_ERROR_GAUSSIAN) {
     for (int i = 0; i < num_particles_; ++i) {
       double theta = particles[i].theta;
 
@@ -70,10 +69,17 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
         particles[i].y += velocity * sin(theta) * delta_t;
       }
 
-      // add uncertainty to x, y and theta
+// add uncertainty to x, y and theta
+#if 1
       normal_distribution<double> dist_x(particles[i].x, std_pos[0]);
       normal_distribution<double> dist_y(particles[i].y, std_pos[1]);
-      normal_distribution<double> dist_theta(particles[i].theta, std_pos[2]);
+#else
+      // better result with smaller stddev
+      normal_distribution<double> dist_x(particles[i].x, std_pos[0] * 0.2);
+      normal_distribution<double> dist_y(particles[i].y, std_pos[1] * 0.2);
+#endif
+      normal_distribution<double> dist_theta(particles[i].theta,
+                                             std_pos[2] * 0.5);
 
       particles[i].x = dist_x(gen);
       particles[i].y = dist_y(gen);
@@ -81,15 +87,15 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     }
   } else {
     // add uncertainty to v an yaw
-    normal_distribution<double> dist_v(velocity, 10);
-    normal_distribution<double> dist_yaw(yaw_rate, 5);
+    normal_distribution<double> dist_v(velocity, 1);
+    normal_distribution<double> dist_yaw(yaw_rate, 0.1);
 
     for (int i = 0; i < num_particles_; ++i) {
       double theta = particles[i].theta;
       const double new_v = dist_v(gen);
       const double new_yaw = dist_yaw(gen);
 
-      if (abs(yaw_rate) > MIN_YAWRATE) {
+      if (abs(new_yaw) > MIN_YAWRATE) {
         particles[i].x +=
             new_v / new_yaw * (sin(theta + new_yaw * delta_t) - sin(theta));
         particles[i].y +=
@@ -99,6 +105,15 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
         particles[i].x += new_v * cos(theta) * delta_t;
         particles[i].y += new_v * sin(theta) * delta_t;
       }
+#if 0
+      // add uncertainty to x, y and theta
+      // filter don't works without additional gaussian noise on final position
+      normal_distribution<double> dist_x(particles[i].x, std_pos[0] * 0.2);
+      normal_distribution<double> dist_y(particles[i].y, std_pos[1] * 0.2);
+
+      particles[i].x = dist_x(gen);
+      particles[i].y = dist_y(gen);
+#endif
     }
   }
 }
@@ -109,7 +124,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs>& ref_pos,
     double min_dist2 = std::numeric_limits<double>::max();
 
     // find observation with minimum distance to prediction
-    for (auto& tbm : to_be_mapped) {
+    for (const auto& tbm : to_be_mapped) {
       double dist2 =
           (tbm.x - rp.x) * (tbm.x - rp.x) + (tbm.y - rp.y) * (tbm.y - rp.y);
 
@@ -145,7 +160,7 @@ std::vector<LandmarkObs> ParticleFilter::inRange(const Particle& p,
   std::vector<LandmarkObs> nearPos;
   int cnt = 0;
 
-  for (auto& lm : map_landmarks.landmark_list) {
+  for (const auto& lm : map_landmarks.landmark_list) {
     double dist2 =
         (lm.x_f - p.x) * (lm.x_f - p.x) + (lm.y_f - p.y) * (lm.y_f - p.y);
 
@@ -195,7 +210,7 @@ void ParticleFilter::calcNewWeights(
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const std::vector<LandmarkObs>& observations,
                                    const Map& map_landmarks) {
-  int particle_nr = 0;
+  auto weights_iterator = weights_.begin();
 
   for (auto& p : particles) {
     // tranform from local to global coordinate system
@@ -217,7 +232,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     }
 
     // fill weight vector to make resample method easier
-    weights_[particle_nr++] = p.weight;
+    *weights_iterator = p.weight;
+    weights_iterator++;
   }
 }
 
