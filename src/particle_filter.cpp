@@ -23,10 +23,10 @@
 using namespace std;
 
 constexpr bool PREDICTION_ERROR_GAUSSIAN = true;
-constexpr bool ASSOCIATE_OBSERVATIONS_TO_MAPPREDICTION = false;
+constexpr bool ASSOCIATE_BASE_ARE_OBSERVATIONS = true;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-  num_particles_ = 20;
+  num_particles_ = 200;
 
   default_random_engine gen;
 
@@ -55,6 +55,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
   default_random_engine gen;
 
   if (PREDICTION_ERROR_GAUSSIAN) {
+    // error std_pos from method call is used
     for (int i = 0; i < num_particles_; ++i) {
       double theta = particles[i].theta;
 
@@ -69,23 +70,17 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
         particles[i].y += velocity * sin(theta) * delta_t;
       }
 
-// add uncertainty to x, y and theta
-#if 1
+      // add uncertainty to x, y and theta
       normal_distribution<double> dist_x(particles[i].x, std_pos[0]);
       normal_distribution<double> dist_y(particles[i].y, std_pos[1]);
-#else
-      // better result with smaller stddev
-      normal_distribution<double> dist_x(particles[i].x, std_pos[0] * 0.2);
-      normal_distribution<double> dist_y(particles[i].y, std_pos[1] * 0.2);
-#endif
-      normal_distribution<double> dist_theta(particles[i].theta,
-                                             std_pos[2] * 0.5);
+      normal_distribution<double> dist_theta(particles[i].theta, std_pos[2]);
 
       particles[i].x = dist_x(gen);
       particles[i].y = dist_y(gen);
       particles[i].theta = dist_theta(gen);
     }
   } else {
+    // use different error model:
     // add uncertainty to v an yaw
     normal_distribution<double> dist_v(velocity, 1);
     normal_distribution<double> dist_yaw(yaw_rate, 0.1);
@@ -121,18 +116,32 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs>& ref_pos,
                                      std::vector<LandmarkObs>& to_be_mapped) {
   for (auto& rp : ref_pos) {
+#if 1
+    // uses standard algorithm with lambda function
+
+    // compares squared distance to rp of landmarks lm0 and lm1
+    auto smaller_dist_to_rp = [rp](const LandmarkObs& lm0,
+                                   const LandmarkObs& lm1) {
+      return dist_squared(lm0, rp) < dist_squared(lm1, rp);
+    };
+    // find element with minimum distance to rp
+    auto mmin = std::min_element(std::begin(to_be_mapped),
+                                 std::end(to_be_mapped), smaller_dist_to_rp);
+    rp.id = (*mmin).id;
+#else
+    // manual implementaition
     double min_dist2 = std::numeric_limits<double>::max();
 
-    // find observation with minimum distance to prediction
+    // find matching "to_be_mapped" for every ref_pos
     for (const auto& tbm : to_be_mapped) {
-      double dist2 =
-          (tbm.x - rp.x) * (tbm.x - rp.x) + (tbm.y - rp.y) * (tbm.y - rp.y);
+      double dist2 = dist_squared(tbm, rp);
 
       if (min_dist2 > dist2) {
         rp.id = tbm.id;
         min_dist2 = dist2;
       }
     }
+#endif
   }
 }
 
@@ -161,8 +170,7 @@ std::vector<LandmarkObs> ParticleFilter::inRange(const Particle& p,
   int cnt = 0;
 
   for (const auto& lm : map_landmarks.landmark_list) {
-    double dist2 =
-        (lm.x_f - p.x) * (lm.x_f - p.x) + (lm.y_f - p.y) * (lm.y_f - p.y);
+    double dist2 = dist_squared(lm.x_f, lm.y_f, p.x, p.y);
 
     if (dist2 <= sensor_range2) {
       LandmarkObs new_lm;
@@ -219,13 +227,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     std::vector<LandmarkObs> predictions =
         inRange(p, map_landmarks, sensor_range);
 
-    if (ASSOCIATE_OBSERVATIONS_TO_MAPPREDICTION) {
-      // association of observations to landmarks
+    if (ASSOCIATE_BASE_ARE_OBSERVATIONS) {
+      // base are observations, associate a landmark to every observation
       dataAssociation(predictions, obs_glob);
       // calculate new weights
       calcNewWeights(&p, std_landmark, predictions, obs_glob);
     } else {
-      // association of landmarks to observations
+      // base are predicted landmarks in sensor range, associate an observation
+      // to every landmark
       dataAssociation(obs_glob, predictions);
       // calculate new weights
       calcNewWeights(&p, std_landmark, obs_glob, predictions);
@@ -243,7 +252,7 @@ void ParticleFilter::resample() {
 
   vector<Particle> res_part;
 
-  for (auto part : particles) {
+  for (int i = 0; i < num_particles_; i++) {
     res_part.push_back(particles[distr(gen)]);
   }
 

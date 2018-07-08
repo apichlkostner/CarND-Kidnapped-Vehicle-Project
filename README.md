@@ -21,15 +21,27 @@ The steps of this project are the following:
 
 # Results
 
+The result with 200 particles and smaller process standard deviation than in method call from `main()`:
 ![](docu/result.png)
 
+While running the filter:
 ![](docu/simulation.png)
+
+Error and processing time with different number of particles:
 
 |nr of particle | err x | err y | err yaw | time |
 |---------------|-------|-------|---------|------|
 | 20            | 0.131 | 0.127 | 0.005   | 49s  |
 | 200           | 0.112 | 0.107 | 0.004   | 49s  |
-| 2000          | 0.107 | 0.098 | 0.004   | 63s  |
+| 500           | 0.109 | 0.102 | 0.004   | 49s  |
+| 1000          | 0.108 | 0.100 | 0.004   | 49s  |
+| 1500          | 0.110 | 0.101 | 0.004   | 51s  |
+| 2000          | 0.107 | 0.100 | 0.004   | 72s  |
+| 2500          | 0.107 | 0.100 | 0.004   | 92s  |
+| 3000          | 0.110 | 0.102 | 0.004   | 98s  |
+| 4000          | 0.110 | 0.102 | 0.004   | 109s |
+
+The 49s are the base time for running the simulator and communication. With less than 1500 particles the calculation of the filter is faster than the pause times of the simulator.
 
 # Experiments
 
@@ -42,7 +54,7 @@ With this modified error model the filter don't works when the car drives strong
 
 ## Changing the standard deviation of the system error model
 
-Smaller stddev, smaller mse:
+Smaller stddev (1/5), smaller mse:
 200 particle 0.087, 0.083, 0.003
 
 ## Use measurements or predicted measurements as base values

@@ -57,6 +57,21 @@ inline double dist(double x1, double y1, double x2, double y2) {
   return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
+/*
+ * Computes the squared euclidean distance between two 2D points.
+ * @param x0 first point
+ * @param x1 second point
+ * @output Squared euclidean distance between two 2D points
+ */
+inline double dist_squared(double x1, double y1, double x2, double y2) {
+  return (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+}
+
+inline double dist_squared(const LandmarkObs& x0, const LandmarkObs& x1) {
+  return dist_squared(x0.x, x0.y, x1.x, x1.y);
+}
+
+
 inline double* getError(double gt_x, double gt_y, double gt_theta, double pf_x,
                         double pf_y, double pf_theta) {
   static double error[3];
