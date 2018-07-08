@@ -1,4 +1,4 @@
-# DRAFT Particle filter DRAFT
+# Particle filter - kidnapped vehicle project
 
 # Summary
 
@@ -54,12 +54,17 @@ With this modified error model the filter don't works when the car drives strong
 
 ## Changing the standard deviation of the system error model
 
-Smaller stddev (1/5), smaller mse:
+In the base code the process noise is the same as the sensor noise of the GPS which is used to initialize the filter. Using smaller standard deviations gives smaller mse:
+
 200 particle 0.087, 0.083, 0.003
 
 ## Use measurements or predicted measurements as base values
 
+It's possible to use the measurements as base, associate a landmark to each of them, and then calculate the likelihood for every measurement. Or the predicted landmarks which should be found by the sensors could be used as base and a measurement could be mapped to each landmark.
 
+The method can be changed in the code with `ASSOCIATE_BASE_ARE_OBSERVATIONS`.
+
+In our case there is no difference in the result since the initial position is already known relatively good and the measurements always find the landmarks with only some noise.
 
 # Running the Code
 This project involves the Term 2 Simulator which can be downloaded [here](https://github.com/udacity/self-driving-car-sim/releases)
@@ -180,16 +185,3 @@ You can find the inputs to the particle filter in the `data` directory.
 ### All other data the simulator provides, such as observations and controls.
 
 > * Map data provided by 3D Mapping Solutions GmbH.
-
-## Success Criteria
-If your particle filter passes the current grading code in the simulator (you can make sure you have the current version at any time by doing a `git pull`), then you should pass!
-
-The things the grading code is looking for are:
-
-
-1. **Accuracy**: your particle filter should localize vehicle position and yaw to within the values specified in the parameters `max_translation_error` and `max_yaw_error` in `src/main.cpp`.
-
-2. **Performance**: your particle filter should complete execution within the time of 100 seconds.
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
