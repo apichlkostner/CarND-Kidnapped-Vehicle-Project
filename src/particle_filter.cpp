@@ -256,7 +256,7 @@ void ParticleFilter::resample() {
     res_part.push_back(particles[distr(gen)]);
   }
 
-  particles = res_part;
+  particles = std::move(res_part);
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle,
