@@ -56,12 +56,16 @@ int main() {
 
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
       auto s = hasData(std::string(data));
+      static double accumulated_time = 0;
+
       if (s != "") {
         auto j = json::parse(s);
         std::string event = j[0].get<std::string>();
 
         if (event == "telemetry") {
           // j[1] is the data JSON object
+
+          auto start_time = std::chrono::system_clock::now();
 
           if (!pf.initialized()) {
             // Sense noisy position data from the simulator
@@ -130,8 +134,17 @@ int main() {
             }
             weight_sum += particles[i].weight;
           }
-          cout << "highest w " << highest_weight << endl;
-          cout << "average w " << weight_sum / num_particles << endl;
+
+          auto end_time = std::chrono::system_clock::now();
+          std::chrono::duration<double> dur = end_time - start_time;
+          double calc_time = dur.count();
+
+          accumulated_time += calc_time;
+
+          cout << "t_accu " << accumulated_time << " ";
+          cout << "highest w " << highest_weight << " ";
+          cout << "average w " << weight_sum / num_particles << " ";
+          cout << "t_singe " << calc_time << endl;
 
           json msgJson;
           msgJson["best_particle_x"] = best_particle.x;

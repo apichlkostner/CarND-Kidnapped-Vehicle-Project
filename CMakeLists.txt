@@ -2,7 +2,7 @@ project(PARTICLE_FILTER)
 
 cmake_minimum_required (VERSION 3.5)
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++11 -Wall -O3 -fopenmp)
 
 set(CXX_FLAGS "-Wall -Wno-int-in-bool-context -Wno-misleading-indentation")
 set(CMAKE_CXX_FLAGS "${CXX_FLAGS}")
@@ -24,5 +24,5 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 add_executable(particle_filter ${sources})
 
 
-target_link_libraries(particle_filter z ssl uv uWS)
+target_link_libraries(particle_filter z ssl uv uWS gomp)
 

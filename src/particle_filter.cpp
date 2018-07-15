@@ -25,8 +25,10 @@ using namespace std;
 constexpr bool PREDICTION_ERROR_GAUSSIAN = true;
 constexpr bool ASSOCIATE_BASE_ARE_OBSERVATIONS = true;
 
+constexpr int NUMTHREADS = 1;
+
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-  num_particles_ = 200;
+  num_particles_ = 100;
 
   default_random_engine gen;
 
@@ -56,6 +58,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 
   if (PREDICTION_ERROR_GAUSSIAN) {
     // error std_pos from method call is used
+    #pragma omp parallel for num_threads(NUMTHREADS)
     for (int i = 0; i < num_particles_; ++i) {
       double theta = particles[i].theta;
 
@@ -85,6 +88,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     normal_distribution<double> dist_v(velocity, 1);
     normal_distribution<double> dist_yaw(yaw_rate, 0.1);
 
+    #pragma omp parallel for num_threads(NUMTHREADS)
     for (int i = 0; i < num_particles_; ++i) {
       double theta = particles[i].theta;
       const double new_v = dist_v(gen);
@@ -218,9 +222,9 @@ void ParticleFilter::calcNewWeights(
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const std::vector<LandmarkObs>& observations,
                                    const Map& map_landmarks) {
-  auto weights_iterator = weights_.begin();
-
-  for (auto& p : particles) {
+  #pragma omp parallel for num_threads(NUMTHREADS)
+  for (size_t i = 0; i < particles.size(); i++) {
+    auto& p = particles[i];
     // tranform from local to global coordinate system
     std::vector<LandmarkObs> obs_glob = local2global(p, observations);
     // build vector with landmarks in range of sensor
@@ -241,8 +245,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     }
 
     // fill weight vector to make resample method easier
-    *weights_iterator = p.weight;
-    weights_iterator++;
+    weights_[i] = p.weight;
   }
 }
 
@@ -250,10 +253,11 @@ void ParticleFilter::resample() {
   default_random_engine gen;
   discrete_distribution<int> distr(weights_.begin(), weights_.end());
 
-  vector<Particle> res_part;
+  vector<Particle> res_part(num_particles_);
 
+  #pragma omp parallel for num_threads(NUMTHREADS)
   for (int i = 0; i < num_particles_; i++) {
-    res_part.push_back(particles[distr(gen)]);
+    res_part[i] = particles[distr(gen)];
   }
 
   particles = std::move(res_part);
